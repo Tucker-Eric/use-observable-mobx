@@ -1,0 +1,6 @@
+{
+  "proseWrap": "always",
+  "importOrderSortSpecifiers": true,
+  "importOrderParserPlugins": ["typescript", "decorators-legacy", "jsx"],
+  "plugins": ["@trivago/prettier-plugin-sort-imports"]
+}
