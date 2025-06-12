@@ -1,4 +1,4 @@
-import { isReactiveProxy, useObservable } from "./use-observable";
+import { isReactiveProxy, useObserved } from "./use-observed";
 import "@testing-library/jest-dom/vitest";
 import { render } from "@testing-library/react";
 import { makeAutoObservable } from "mobx";
@@ -134,7 +134,7 @@ describe("useObserver", () => {
     });
   });
 
-  const useStore = () => useObservable(store);
+  const useStore = () => useObserved(store);
 
   it("Rerenders components when computed properties change", async () => {
     const TestComponent = () => {

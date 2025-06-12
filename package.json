@@ -1,5 +1,5 @@
 {
-  "name": "use-observable",
+  "name": "use-observed",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -16,13 +16,15 @@
     }
   },
   "scripts": {
-    "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
+    "dev": "vite",
+    "format:check": "prettier . --check",
+    "lint:check": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "prepare": "husky",
     "prepublishOnly": "npm run build",
-    "test": "vitest run",
-    "prepare": "husky"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "sideEffects": false,
   "devDependencies": {
@@ -34,6 +36,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.2",
+    "@vitest/coverage-v8": "^3.2.3",
     "eslint": "^9.28.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

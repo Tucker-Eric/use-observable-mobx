@@ -6,6 +6,7 @@ import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const inCI = !!process.env.CI;
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -34,8 +35,15 @@ export default defineConfig({
     emptyOutDir: true,
   },
   test: {
+    name: "unit",
     environment: "happy-dom",
     restoreMocks: true,
-    setupFiles: ["./setupTests.ts"],
+    setupFiles: "./setupTests.ts",
+    reporters: inCI ? ["default", "junit"] : ["default"],
+    outputFile: resolve(__dirname, "junit.xml"),
+    coverage: {
+      enabled: inCI,
+      reporter: inCI ? ["text", "html", "cobertura"] : ["text", "html"],
+    },
   },
 });

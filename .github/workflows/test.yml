@@ -1,0 +1,74 @@
+name: test
+
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["latest"]
+    name: Lint on Node ${{ matrix.node }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install
+      - run: pnpm format:check
+      - run: pnpm lint:check
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ["latest"]
+    name: Test (Node ${{ matrix.node }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install
+      - run: pnpm test
+      - name: Upload Test Results
+        if: (!cancelled())
+        uses: actions/upload-artifact@v4
+        with:
+          name: Test Results (Node ${{ matrix.node }})
+          path: |
+            junit.xml
+            coverage/
+
+  publish-test-results:
+    name: "Publish Tests Results"
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
+      issues: read
+    if: (!cancelled())
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "artifacts/**/*.xml"
+
+  coverage-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 5monkeys/cobertura-action@master
+        with:
+          path: artifacts/coverage/cobertura-coverage.xml
+          skip_covered: false
