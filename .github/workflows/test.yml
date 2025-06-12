@@ -5,16 +5,13 @@ on: [push, pull_request]
 jobs:
   lint:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: ["latest"]
-    name: Lint on Node ${{ matrix.node }}
+    name: Lint
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: latest
           cache: pnpm
       - run: pnpm install
       - run: pnpm format:check
@@ -22,16 +19,13 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: ["latest"]
-    name: Test (Node ${{ matrix.node }})
+    name: Test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node }}
+          node-version: latest
           cache: pnpm
       - run: pnpm install
       - run: pnpm test
@@ -39,7 +33,7 @@ jobs:
         if: (!cancelled())
         uses: actions/upload-artifact@v4
         with:
-          name: Test Results (Node ${{ matrix.node }})
+          name: Test Results
           minimum_coverage: 75
           path: |
             junit.xml
