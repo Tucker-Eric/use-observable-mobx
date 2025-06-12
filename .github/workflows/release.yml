@@ -40,7 +40,7 @@ jobs:
         uses: JS-DevTools/npm-publish@v3
         with:
           token: ${{ secrets.NPM_TOKEN }}
-          # provenance: true
+          provenance: true
 
       - name: Post-publish
         if: ${{ steps.publish.outputs.type }}
