@@ -85,7 +85,7 @@ interface ObserverAdministration {
 }
 
 // Hook implementation using useSyncExternalStore
-export const useObserved = <T extends object>(store: T): T => {
+export const useObservable = <T extends object>(store: T): T => {
   const admRef = useRef<ObserverAdministration | null>(null);
 
   // Set `inRender` to false to notify the reaction we can clear tracked observables
@@ -126,7 +126,7 @@ export const useObserved = <T extends object>(store: T): T => {
  * This is useful when you need to access the original object without the reactive proxy.
  * For placing an object in react context or passing it to a function that expects the original object.
  */
-useObserved.unwrap = getOriginal;
+useObservable.unwrap = getOriginal;
 
 const createReaction = (adm: ObserverAdministration) =>
   new ReactionExtended(`useObservable(${adm.name})`, () => {

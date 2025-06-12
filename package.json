@@ -1,7 +1,6 @@
 {
-  "name": "use-observed",
-  "private": true,
-  "version": "0.0.1",
+  "name": "use-observable-mobx",
+  "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

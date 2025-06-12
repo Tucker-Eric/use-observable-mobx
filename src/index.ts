@@ -1,1 +1,1 @@
-export * from "./use-observed";
+export * from "./use-observable";
