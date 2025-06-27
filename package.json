@@ -6,10 +6,27 @@
   "module": "./dist/use-observable-mobx.js",
   "types": "./dist/index.d.ts",
   "repository": {
-    "url": "https://github.com/Tucker-Eric/use-observable-mobx"
+    "type": "git",
+    "url": "git+ssh://git@github.com/Tucker-Eric/use-observable-mobx.git"
+  },
+  "homepage": "https://github.com/Tucker-Eric/use-observable-mobx",
+  "bugs": {
+    "url": "https://github.com/Tucker-Eric/use-observable-mobx/issues"
   },
   "files": [
     "dist"
+  ],
+  "keywords": [
+    "react",
+    "mobx",
+    "hooks",
+    "state-management",
+    "mobx-observable",
+    "observable",
+    "reactive",
+    "reactjs",
+    "mobx-react",
+    "react-hooks"
   ],
   "exports": {
     ".": {
