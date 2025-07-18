@@ -9,7 +9,7 @@ importers:
   .:
     devDependencies:
       '@eslint/js':
-        specifier: ^9.28.0
+        specifier: ^9.31.0
         version: 9.31.0
       '@testing-library/jest-dom':
         specifier: ^6.6.3
