@@ -1,0 +1,214 @@
+# use-observable-mobx
+
+A deeply reactive hook for MobX that efficiently tracks property access in React
+components as an alternative to the
+[`observer` HOC](https://mobx.js.org/react-integration.html).
+
+## Installation
+
+```bash
+npm install use-observable-mobx
+# or
+yarn add use-observable-mobx
+# or
+pnpm add use-observable-mobx
+```
+
+## Features
+
+- **Deeply Reactive**: Automatically tracks and reacts to all accessed
+  properties, including nested objects and arrays
+- **Efficient Rendering**: Components rerender only when accessed properties
+  change
+
+## Usage
+
+```tsx
+import { makeAutoObservable } from "mobx";
+import { useState } from "react";
+import { useObservable } from "use-observable-mobx";
+
+interface Item {
+  id: number;
+  text: string;
+}
+
+class Store {
+  counter = 0;
+  items: Item[] = [{ id: 1, text: "Item 1" }];
+
+  constructor() {
+    makeAutoObservable(this);
+  }
+
+  increment() {
+    this.counter++;
+  }
+
+  addItem(text: string) {
+    this.items.push({
+      id: this.items.length + 1,
+      text,
+    });
+  }
+}
+
+const store = new Store();
+
+const Counter = () => {
+  const { counter, increment } = useObservable(store);
+
+  return (
+    <div>
+      <p>Count: {counter}</p>
+      <button onClick={increment}>Increment</button>
+    </div>
+  );
+};
+
+// Or compose hooks without needing to import the store again
+const useStore = () => useObservable(store);
+
+const ItemList = () => {
+  const { items, addItem } = useStore();
+  const [text, setText] = useState("");
+
+  return (
+    <div>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id}>{item.text}</li>
+        ))}
+      </ul>
+
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <button
+        onClick={() => {
+          addItem(text);
+          setText("");
+        }}
+      >
+        Add Item
+      </button>
+    </div>
+  );
+};
+```
+
+## Advanced Usage
+
+### Unwrapping Proxies
+
+Sometimes you need to access the original MobX object without the reactive
+proxy, such as when placing an object in React context or passing it to a
+function that expects the original object.
+
+```tsx
+import { type PropsWithChildren, createContext } from "react";
+import { useObservable } from "use-observable-mobx";
+
+const ItemContext = createContext<Item | null>(null);
+
+const useItemContext = () => {
+  const item = useContext(ItemContext);
+
+  if (!item) {
+    throw new Error("useItemContext must be used within an ItemProvider");
+  }
+
+  return useObservable(item);
+};
+
+const ItemProvider = ({
+  children,
+  item,
+}: PropsWithChildren<{ item: Item }>) => (
+  // Unwrap when passing to context to keep the mobx object reference the same
+  <StoreContext.Provider value={useObservable.unwrap(item)}>
+    {children}
+  </StoreContext.Provider>
+);
+
+const Item = () => {
+  const item = useItemContext();
+
+  return <li>{item.text}</li>;
+};
+
+const ItemList = () => {
+  const { items, addItem } = useCounter();
+  const [text, setText] = useState("");
+
+  return (
+    <div>
+      <ul>
+        {items.map((item) => (
+          <ItemProvider key={item.id} item={item} />
+        ))}
+      </ul>
+
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <button
+        onClick={() => {
+          addItem(text);
+          setText("");
+        }}
+      >
+        Add Item
+      </button>
+    </div>
+  );
+};
+```
+
+### Checking for Reactive Proxies
+
+```tsx
+import { isReactiveProxy } from "use-observable-mobx";
+
+const MyComponent = () => {
+  const store = useObservable(myStore);
+
+  console.log(isReactiveProxy(store)); // true
+  console.log(isReactiveProxy({})); // false
+};
+```
+
+## How It Works
+
+The `useObservable` hook creates a deeply reactive proxy that:
+
+1. Tracks all property access during render
+2. Subscribes to MobX observables for those properties
+3. Triggers re-renders when any accessed property changes
+
+Unlike traditional MobX integration approaches, this hook doesn't require
+wrapping components in observers or using special syntax. It simply works by
+tracking what you actually use in your component.
+
+## Inspiration
+
+This library was inspired by:
+
+- [Discussion on deprecating `useObserver`](https://github.com/mobxjs/mobx/discussions/2566)
+- [Valtio's `useSnapshot` hook to track accessed properies](https://github.com/mobxjs/mobx/discussions/2566#discussioncomment-572094)
+
+## Acknowledgments
+
+- [**Valtio**](https://github.com/pmndrs/valtio): Thanks to Valtio for laying
+  the groundwork for a deeply reactive approach that tracks property access in
+  React components which this library borrows from.
+- [**MobX**](https://github.com/mobxjs/mobx/tree/main/packages/mobx-react-lite):
+  Thanks to the MobX team for their
+  [`useObserver`](https://github.com/mobxjs/mobx/blob/8b54ab1a6ef23dd76f066a586f735943f95127aa/packages/mobx-react-lite/src/useObserver.ts)
+  implementation, which this hook borrows from extensively.
+
+## Sponsor
+
+Thanks to [Gavel](https://www.gavel.io/) for sponsoring the initial development.
+
+[<svg width="105" height="32" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#a)"><path d="M46.469 5.604v15.762c0 1.22-.156 3.875-.575 5.028-.771 2.12-2.142 3.704-4.179 4.705-1.333.655-2.742.914-4.217.9a11.606 11.606 0 0 1-2.53-.286 8.019 8.019 0 0 1-2.897-1.338c-.934-.673-1.76-1.454-2.4-2.42l-.083-.135a4275.657 4275.657 0 0 1 3.691-2.649c.066.082.122.149.174.218.753 1.02 1.72 1.73 2.972 2 1.181.255 2.331.175 3.402-.444.973-.563 1.555-1.422 1.84-2.494.156-.584.156-2.64.125-3.282-.19.174-.346.325-.507.469a5.517 5.517 0 0 1-3.046 1.366c-1.732.203-3.374-.062-4.923-.84-1.79-.897-3.12-2.252-3.977-4.068-.785-1.66-1.01-3.406-.79-5.214.269-2.206 1.217-4.073 2.88-5.552a8.342 8.342 0 0 1 4.807-2.121c.965-.099 1.919-.075 2.86.174.986.262 1.812.784 2.516 1.51l.184.196V5.604h4.673Zm-13.31 8.515c.006.12.012.24.02.36.166 2.313 2.19 4.475 4.95 4.097 1.174-.16 2.12-.717 2.826-1.652 1.192-1.579 1.275-3.581.244-5.27a4.26 4.26 0 0 0-5.62-1.58c-1.607.849-2.342 2.26-2.42 4.045ZM98.01 16.095H84.99c.125.564.327 1.07.644 1.524.975 1.388 2.336 2.032 4.013 2.013 1.09-.013 2.053-.394 2.873-1.125.443-.395.842-.83 1.17-1.326.055-.082.112-.161.187-.268 1.2.853 2.39 1.696 3.588 2.545-.27.48-.596.884-.937 1.275-.87.994-1.883 1.825-3.085 2.42-.477.236-.98.413-1.498.538a11.175 11.175 0 0 1-3.3.267 8.844 8.844 0 0 1-4.287-1.416c-2.08-1.332-3.356-3.236-3.921-5.62-.272-1.147-.31-2.317-.172-3.493a9.37 9.37 0 0 1 1.524-4.16c.858-1.289 2.001-2.26 3.373-2.961A8.79 8.79 0 0 1 88.1 5.41c.738-.09 1.478-.103 2.223-.034.876.082 1.72.269 2.526.612 1.604.683 2.885 1.751 3.812 3.232.707 1.129 1.123 2.362 1.318 3.676.15 1.016.189 2.034.056 3.054-.005.039-.013.076-.026.149v-.004Zm-4.514-3.38c.003-.024.007-.033.006-.043-.004-.03-.006-.058-.013-.087-.269-1.11-.962-1.897-1.924-2.456-.944-.549-1.972-.7-3.044-.529-1.217.194-2.188.797-2.889 1.814a3.088 3.088 0 0 0-.53 1.302h8.393v-.002ZM73.715 23.86l-4.156-.017c-1.881-4.81-3.764-9.877-5.645-14.687l-1.102-2.825-.116-.298h5.127c.666 1.832 1.347 3.66 1.993 5.5.642 1.83 1.249 3.672 1.89 5.567 1.171-3.771 2.61-7.393 3.909-11.069h5.029l-6.93 17.831.001-.001ZM100.301 0h4.608v23.86h-4.608V0ZM62.463 20.154c-.01-2.525-.021-5.05-.043-7.574-.008-1.048-.166-2.07-.53-3.061-.555-1.508-1.55-2.595-3.023-3.243-1.006-.442-2.072-.606-3.156-.646-2.085-.076-4.222.413-6.144 1.035v4.349c1.85-1.016 4.089-1.609 6.182-1.09.495.124.982.309 1.387.62.768.59.895 1.566.874 2.48l-.137-.137c-.558-.483-1.213-.775-1.92-.95a6.806 6.806 0 0 0-3.933.188c-1.854.644-3.055 1.938-3.605 3.813-.39 1.332-.338 2.68.063 4 .521 1.71 1.611 2.946 3.226 3.72 1.076.517 2.214.68 3.391.588.924-.071 1.753-.396 2.457-1.01.148-.128.284-.271.454-.434l.076 1.06h4.381v-.341c0-1.123.004-2.245 0-3.367Zm-7.538.23c-1.668.002-2.7-1.278-2.686-2.62.016-1.512 1.133-2.61 2.686-2.609 1.538 0 2.636 1.088 2.639 2.609.032 1.306-.946 2.618-2.639 2.62Z" fill="#000"></path><path d="M20.512 8.625H3.35a3.349 3.349 0 1 0 0 6.698h17.163a3.349 3.349 0 1 0 0-6.698ZM20.512 0H3.35a3.349 3.349 0 1 0 0 6.697h17.163a3.349 3.349 0 1 0 0-6.697ZM12.226 17.25H3.349a3.349 3.349 0 0 0 0 6.698h8.877a3.349 3.349 0 0 0 0-6.697Z" fill="#8256F7"></path><path d="M20.512 23.95a3.349 3.349 0 1 0 0-6.698 3.349 3.349 0 0 0 0 6.697Z" fill="#000"></path></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h104.908v32H0z"></path></clipPath></defs></svg>](https://www.gavel.io/)
+
+## License
+
+MIT

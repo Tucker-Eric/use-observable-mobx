@@ -1,4 +1,6 @@
 import { Reaction, _getGlobalState, getDebugName, isObservable } from "mobx";
+// How necessary is the `_observerFinalizationRegistry`?
+// We can drop `mobx-react-lite` as a peer dependency if `_observerFinalizationRegistry` isn't needed.
 import { _observerFinalizationRegistry } from "mobx-react-lite";
 import {
   isValidElement,
