@@ -1,10 +1,13 @@
 {
   "name": "use-observable-mobx",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "main": "./dist/use-observable-mobx.js",
   "module": "./dist/use-observable-mobx.js",
   "types": "./dist/index.d.ts",
+  "repository": {
+    "url": "https://github.com/Tucker-Eric/use-observable-mobx"
+  },
   "files": [
     "dist"
   ],
