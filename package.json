@@ -85,7 +85,7 @@
       "eslint --fix --max-warnings 0"
     ]
   },
-  "packageManager": "pnpm@10.12.2",
+  "packageManager": "pnpm@10.14.0",
   "publishConfig": {
     "access": "public"
   }
