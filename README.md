@@ -1,8 +1,26 @@
 # use-observable-mobx
 
-A deeply reactive hook for MobX that efficiently tracks property access in React
-components as an alternative to the
-[`observer` HOC](https://mobx.js.org/react-integration.html).
+A tiny, deeply reactive React hook for MobX that tracks exactly which properties your component reads and only re-renders when those properties change. A drop-in alternative to wrapping components with `observer`.
+
+- No HOCs or decorators
+- Works with nested objects/arrays
+- Minimal boilerplate and great ergonomics
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick start](#quick-start)
+- [Why this approach?](#why-this-approach)
+- [API Reference](#api-reference)
+- [Advanced usage](#advanced-usage)
+  - [Putting objects in React context](#putting-objects-in-react-context-unwrap-first)
+  - [Checking if a value is a reactive proxy](#checking-if-a-value-is-a-reactive-proxy)
+  - [Interop with `observer`/`useObserver`](#interop-with-observeruseobserver)
+  - [Avoid subscribing unintentionally](#avoid-subscribing-unintentionally)
+- [How it works](#how-it-works-high-level)
+- [FAQ](#faq)
+- [License](#license)
+
 
 ## Installation
 
@@ -14,28 +32,23 @@ yarn add use-observable-mobx
 pnpm add use-observable-mobx
 ```
 
-## Features
+Requirements:
+- React 18+ (uses `useSyncExternalStore`)
+- MobX 6+
 
-- **Deeply Reactive**: Automatically tracks and reacts to all accessed
-  properties, including nested objects and arrays
-- **Efficient Rendering**: Components rerender only when accessed properties
-  change
 
-## Usage
+---
+
+## Quick start
+
+1) Create a MobX store (standard MobX patterns work)
 
 ```tsx
 import { makeAutoObservable } from "mobx";
-import { useState } from "react";
-import { useObservable } from "use-observable-mobx";
-
-interface Item {
-  id: number;
-  text: string;
-}
 
 class Store {
   counter = 0;
-  items: Item[] = [{ id: 1, text: "Item 1" }];
+  items = [{ id: 1, text: "Item 1" }];
 
   constructor() {
     makeAutoObservable(this);
@@ -46,17 +59,22 @@ class Store {
   }
 
   addItem(text: string) {
-    this.items.push({
-      id: this.items.length + 1,
-      text,
-    });
+    this.items.push({ id: this.items.length + 1, text });
   }
 }
 
-const store = new Store();
+export const store = new Store();
+```
 
-const Counter = () => {
-  const { counter, increment } = useObservable(store);
+2) Use `useObservable` in your components and just read what you need
+
+```tsx
+import { useState } from "react";
+import { useObservable } from "use-observable-mobx";
+import { store } from "./store";
+
+export const Counter = () => {
+  const { counter, increment } = useObservable(store); // reads only these two
 
   return (
     <div>
@@ -66,11 +84,8 @@ const Counter = () => {
   );
 };
 
-// Or compose hooks without needing to import the store again
-const useStore = () => useObservable(store);
-
-const ItemList = () => {
-  const { items, addItem } = useStore();
+export const ItemList = () => {
+  const { items, addItem } = useObservable(store);
   const [text, setText] = useState("");
 
   return (
@@ -95,119 +110,163 @@ const ItemList = () => {
 };
 ```
 
-## Advanced Usage
+That’s it. The component re-renders only when the properties it read during render change.
 
-### Unwrapping Proxies
-
-Sometimes you need to access the original MobX object without the reactive
-proxy, such as when placing an object in React context or passing it to a
-function that expects the original object.
+Tip: You can compose a convenience hook if you prefer.
 
 ```tsx
-import { type PropsWithChildren, createContext } from "react";
+// Avoid re-importing the store everywhere
+export const useStore = () => useObservable(store);
+```
+
+---
+
+## Why this approach?
+
+- Deeply reactive: If you read `todos[0].title`, only changes to that path trigger a re-render.
+- Zero ceremony: No HOC, no decorators, no special observers. Just a hook.
+- Scales well: Components naturally subscribe to what they actually use.
+
+---
+
+## API Reference
+
+- `useObservable<T extends object>(store: T): T`
+  - Returns a reactive proxy to your MobX store.
+  - During render, it tracks which properties you access and subscribes only to those.
+  - Only those accessed properties will cause re-renders when they change.
+
+- `useObservable.unwrap<T>(value: T): T`
+  - Unwraps a reactive proxy produced by `useObservable` back to the original MobX object.
+  - Safe to call with non-proxies (returns the value unchanged).
+  - Alias of `getOriginal`.
+
+- `getOriginal<T>(value: T): T`
+  - Same as `useObservable.unwrap`. Provided as a named export for convenience.
+
+- `isReactiveProxy<T>(value: T): boolean`
+  - Returns `true` if `value` is a reactive proxy created by `useObservable`.
+
+Notes:
+- Tracking happens only during render. Reading properties inside event handlers or effects will not subscribe to changes of those properties.
+- You should not store the reactive proxy in MobX state or React context. Use `unwrap` (or `getOriginal`) when passing values to places that should keep the original reference identity.
+
+---
+
+## Advanced usage
+
+### Putting objects in React context (unwrap first)
+
+When passing MobX objects through React Context, keep the original object identity stable by unwrapping before providing. Then wrap again where you consume.
+
+```tsx
+import { createContext, useContext, PropsWithChildren } from "react";
 import { useObservable } from "use-observable-mobx";
+
+type Item = { id: number; text: string };
 
 const ItemContext = createContext<Item | null>(null);
 
-const useItemContext = () => {
+export const ItemProvider = ({
+  item,
+  children,
+}: PropsWithChildren<{ item: Item }>) => (
+  <ItemContext.Provider value={useObservable.unwrap(item)}>
+    {children}
+  </ItemContext.Provider>
+);
+
+export const useItem = () => {
   const item = useContext(ItemContext);
-
-  if (!item) {
-    throw new Error("useItemContext must be used within an ItemProvider");
-  }
-
+  if (!item) throw new Error("useItem must be used within <ItemProvider>");
   return useObservable(item);
 };
 
-const ItemProvider = ({
-  children,
-  item,
-}: PropsWithChildren<{ item: Item }>) => (
-  // Unwrap when passing to context to keep the mobx object reference the same
-  <StoreContext.Provider value={useObservable.unwrap(item)}>
-    {children}
-  </StoreContext.Provider>
-);
-
-const Item = () => {
-  const item = useItemContext();
-
+const ItemView = () => {
+  const item = useItem(); // reactive proxy
   return <li>{item.text}</li>;
 };
-
-const ItemList = () => {
-  const { items, addItem } = useCounter();
-  const [text, setText] = useState("");
-
-  return (
-    <div>
-      <ul>
-        {items.map((item) => (
-          <ItemProvider key={item.id} item={item} />
-        ))}
-      </ul>
-
-      <input value={text} onChange={(e) => setText(e.target.value)} />
-      <button
-        onClick={() => {
-          addItem(text);
-          setText("");
-        }}
-      >
-        Add Item
-      </button>
-    </div>
-  );
-};
 ```
 
-### Checking for Reactive Proxies
+### Checking if a value is a reactive proxy
 
 ```tsx
-import { isReactiveProxy } from "use-observable-mobx";
+import { useObservable, isReactiveProxy } from "use-observable-mobx";
 
-const MyComponent = () => {
+const Example = ({ myStore }: { myStore: object }) => {
   const store = useObservable(myStore);
-
   console.log(isReactiveProxy(store)); // true
-  console.log(isReactiveProxy({})); // false
+  console.log(isReactiveProxy({}));    // false
+  return null;
 };
 ```
 
-## How It Works
+### Interop with `observer`/`useObserver`
 
-The `useObservable` hook creates a deeply reactive proxy that:
+You generally don’t need `observer` around components that use `useObservable`. If you already have a codebase with `observer`, you can:
+- Gradually migrate to `useObservable`, or
+- Use both, although it’s redundant. Prefer one approach per component.
 
-1. Tracks all property access during render
-2. Subscribes to MobX observables for those properties
-3. Triggers re-renders when any accessed property changes
+### Avoid subscribing unintentionally
 
-Unlike traditional MobX integration approaches, this hook doesn't require
-wrapping components in observers or using special syntax. It simply works by
-tracking what you actually use in your component.
+Because tracking only happens during render:
+- It’s safe to read any values inside event handlers without subscribing.
+- To subscribe to derived/computed values, read them during render (e.g., `{store.fullName}`).
+
+---
+
+## How it works (high level)
+
+1) On render, the proxy tracks every property you read (deep paths included).
+2) It subscribes to the relevant MobX observables for those paths.
+3) When any of those observed properties change, `useSyncExternalStore` triggers a re-render.
+
+This mirrors the mental model: “re-render me when the things I actually used change.”
+
+---
+
+## FAQ
+
+- Do I still need to wrap components with `observer`?
+  - No. `useObservable` handles the reactivity for you. Use it directly inside components.
+
+- Will reading inside callbacks subscribe my component?
+  - No. Only property reads during render are tracked.
+
+- Can I put the reactive proxy into context or store it in MobX state?
+  - Prefer passing/storing the original object. Use `useObservable.unwrap` (or `getOriginal`) when putting values into context or other long-lived containers.
+
+- Is it TypeScript friendly?
+  - Yes. The return type matches your input type; getters and methods are fully typed.
+
+- How do I minimize re-renders?
+  - Only read what you need during render. If you read fewer properties, you’ll subscribe to fewer things.
+
+---
 
 ## Inspiration
 
-This library was inspired by:
+- Discussion on deprecating `useObserver` in MobX
+- Valtio’s pattern of tracking accessed properties
 
-- [Discussion on deprecating `useObserver`](https://github.com/mobxjs/mobx/discussions/2566)
-- [Valtio's `useSnapshot` hook to track accessed properies](https://github.com/mobxjs/mobx/discussions/2566#discussioncomment-572094)
+This library borrows ideas from both, adapting them for a simple, hook-only MobX experience.
+
+---
 
 ## Acknowledgments
 
-- [**Valtio**](https://github.com/pmndrs/valtio): Thanks to Valtio for laying
-  the groundwork for a deeply reactive approach that tracks property access in
-  React components which this library borrows from.
-- [**MobX**](https://github.com/mobxjs/mobx/tree/main/packages/mobx-react-lite):
-  Thanks to the MobX team for their
-  [`useObserver`](https://github.com/mobxjs/mobx/blob/8b54ab1a6ef23dd76f066a586f735943f95127aa/packages/mobx-react-lite/src/useObserver.ts)
-  implementation, which this hook borrows from extensively.
+- [Valtio](https://github.com/pmndrs/valtio): for the deeply reactive, access-tracking approach which this library borrows from.
+- [MobX](https://mobx.js.org/react-integration.html): for the [`useObserver`](https://github.com/mobxjs/mobx/blob/8b54ab1a6ef23dd76f066a586f735943f95127aa/packages/mobx-react-lite/src/useObserver.ts) which this hook borrows from extensively.
+
+---
 
 ## Sponsor
 
-Thanks to [Gavel](https://www.gavel.io/) for sponsoring the initial development.
+Thanks to Gavel for sponsoring the initial development.
 
 [![Gavel](https://assets.gavel.dev/brand/gavel.svg)](https://www.gavel.io/)
+
+---
 
 ## License
 
