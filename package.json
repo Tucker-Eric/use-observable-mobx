@@ -84,7 +84,7 @@
       "prettier --write --ignore-unknown",
       "eslint --fix --max-warnings 0"
     ],
-    "**/*.md": [
+    "**/*.{md,json}": [
       "prettier --write --ignore-unknown"
     ]
   },
