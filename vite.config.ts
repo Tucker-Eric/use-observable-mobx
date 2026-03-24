@@ -2,8 +2,8 @@
 import react from "@vitejs/plugin-react";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { defineConfig } from "vitest/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const inCI = !!process.env.CI;
@@ -37,6 +37,7 @@ export default defineConfig({
   test: {
     name: "unit",
     environment: "happy-dom",
+    clearMocks: true,
     restoreMocks: true,
     setupFiles: "./setupTests.ts",
     reporters: inCI ? ["default", "junit"] : ["default"],
