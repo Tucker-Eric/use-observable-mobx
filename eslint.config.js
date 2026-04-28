@@ -30,7 +30,7 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
-
+      "react-hooks/refs": "off",
       "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/restrict-template-expressions": "off",
       "@typescript-eslint/require-await": "off",
